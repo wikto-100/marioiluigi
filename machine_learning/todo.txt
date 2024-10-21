@@ -1,0 +1,3 @@
+jupyter notebook i pytorch, masz requirements.txt
+(python -m pip freeze > requirements.txt) ja korzystam z venv
+możesz ulepszyć to co zrobiłem albo spróbować się skomunikować z tą dll-ką
