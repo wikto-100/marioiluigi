@@ -1,19 +1,21 @@
-def try_move(source, target, board_state):
+def canDoMove(move, board_state):
     move_accepted = True
-    winner = None
-    new_state = [
-            ['bR', 'bN', 'bB', 'bQ', 'bK', 'bB', 'bN', 'bR'],
-            ['bP', 'bP', 'bP', 'bP', 'bP', 'bP', 'bP', 'bP'],
-            [''  ,  '' ,  '' ,  '' , ''  , ''  ,  '' , ''  ],
-            [''  ,  '' ,  '' ,  '' , ''  , ''  ,  '' , ''  ],
-            [''  ,  '' ,  '' , 'wP', ''  , ''  ,  '' , ''  ],
-            [''  ,  '' ,  '' ,  '' , ''  , ''  ,  '' , ''  ],
-            ['wP', 'wP', 'wP',  '', 'wP', 'wP', 'wP', 'wP'],
-            ['wR', 'wN', 'wB', 'wQ', 'wK', 'wB', 'wN', 'wR'],
-        ]
-    move = "Pd4"
+    print(move)
 
-    if source == (6,3) and target == (4,3):
-        return move_accepted, winner, new_state, move
+    if move == '2e4e':
+        return move_accepted
     else:
-        return False, None, 0, 0
+        return
+    
+def getAppliedMove(board_state, move):
+    if move == '2e4e':
+        new_state = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR'
+    else:
+        new_state = 'rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR'
+    return new_state
+
+def isLostCondition(board_state):
+    if board_state == 'rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR':
+        return True
+    else:
+        return False

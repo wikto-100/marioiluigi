@@ -1,5 +1,6 @@
 import pygame
 import sys
+import time
 import Config
 from Board import Board
 
@@ -8,6 +9,9 @@ def get_tile_pos(pos):
     row = y // Config.SQUARE_SIZE
     col = x // Config.SQUARE_SIZE
     return row, col
+
+def get_tile(pos):
+    return (8 - pos[0] , chr(pos[1] + 97))
 
 def run():
     pygame.init()
@@ -31,34 +35,41 @@ def run():
 
                 if event.button == 1:
                     target = get_tile_pos(pygame.mouse.get_pos())
+                    tile = get_tile(target)
 
                     if selected_piece != None:
-                        print(selected_piece,"to",target)
-                        move_accepted, winner, player_move, bot_move = board.move(selected_piece, target)
-                        
-                        if move_accepted == True:
-                            selected_piece = None
-                            print(str(turn)+".",player_move, bot_move)
-                            turn+=1
+                        move_accepted, player_move, winner = board.player_move(selected_piece, tile)
                         if winner is not None:
                             print("Game ended")
                             running = False
+                        
+                        if move_accepted == True and running:
+                            time.sleep(0.3)
+                            bot_move, winner = board.bot_move()
+                            if winner is not None:
+                                print("Game ended")
+                                running = False
+                            
+                            print(str(turn)+".",player_move, bot_move)
+                            turn+=1
+                            selected_piece = None
+                
                     else:
-                        piece = board.state[target[0]][target[1]]
+                        piece = board.get_piece(target[0], target[1])
                         if piece != '' and piece[0] == player:
-                            selected_piece = (target)
+                            selected_piece = (tile)
                             board.higlight(target)
                 
                 else:
                     selected_piece = None
                     board.draw()
 
-    if winner == "black":
-        msg = "BLACK WINS"
-    elif winner == "white":
+    if winner == "draw":
+        msg = "draw"
+    elif winner == "player" and player == "w":
         msg = "WHITE WINS"
     else:
-        msg = "DRAW"
+        msg = "BLACK WINS"
 
     font = pygame.font.SysFont("Arial", 100)
     txtsurf = font.render(msg, True, Config.TEXT_COLOR)
