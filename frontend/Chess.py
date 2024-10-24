@@ -46,17 +46,17 @@ def run():
                         if move_accepted == True and running:
                             time.sleep(0.3)
                             bot_move, winner = board.bot_move()
+                            print(str(turn)+".",player_move, bot_move)
                             if winner is not None:
                                 print("Game ended")
                                 running = False
                             
-                            print(str(turn)+".",player_move, bot_move)
                             turn+=1
                             selected_piece = None
                 
                     else:
                         piece = board.get_piece(target[0], target[1])
-                        if piece != '' and piece[0] == player:
+                        if piece != '' and piece.isupper() and player == 'w':
                             selected_piece = (tile)
                             board.higlight(target)
                 

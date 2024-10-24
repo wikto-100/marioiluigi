@@ -2,13 +2,11 @@ import pygame
 import Config
 
 class Piece:
-    PADDING = 15
-    OUTLINE = 4
 
-    def __init__(self, row, col, color):
+    def __init__(self, row, col, type):
         self.row = row
         self.col = col
-        self.color = color
+        self.type =type
         self.calc_pos()
 
     def calc_pos(self):
@@ -17,6 +15,7 @@ class Piece:
         self.y = size * self.row + size // 2
 
     def draw(self, screen):
-        radius = Config.SQUARE_SIZE // 2 - self.PADDING
-        pygame.draw.circle(screen, Config.GREY, (self.x, self.y), radius + self.OUTLINE)
-        pygame.draw.circle(screen, self.color, (self.x, self.y), radius)
+        size = Config.SQUARE_SIZE
+        image = pygame.image.load("images/" + self.type + ".png").convert_alpha()
+        scaled_image = pygame.transform.scale(image, (size, size))
+        screen.blit(scaled_image, (self.col * size, self.row * size))

@@ -15,11 +15,7 @@ class Board:
         for tile in row:
 
             if col == y and not tile.isdigit():
-                piece = tile
-                if piece.isupper():
-                    return 'w' + tile.lower()
-                else:
-                    return 'b' + tile
+                return tile
             else:
                 if tile.isdigit():
                     col += int(tile)
@@ -39,9 +35,9 @@ class Board:
                     col += int(tile)
                 else:
                     if tile.isupper():
-                        piece = Piece(row_num, col, Config.WHITE)
+                        piece = Piece(row_num, col, tile)
                     else:
-                        piece = Piece(row_num, col, Config.BLACK)
+                        piece = Piece(row_num, col, tile)
                     piece.draw(self.screen)
                     col+=1
             row_num +=1
@@ -62,16 +58,15 @@ class Board:
         
         p = self.get_piece(row, col)
         if p != '':
-            if p[0] == 'w':
-                piece = Piece(row, col, Config.WHITE)
+            if p.isupper():
+                piece = Piece(row, col, p)
             else:
-                piece = Piece(row, col, Config.BLACK)
+                piece = Piece(row, col, p)
 
         piece.draw(self.screen)
         pygame.display.flip()
         
     def player_move(self, source, target):
-        print(source, target)
         move = str(source[0]) + source[1]+ str(target[0]) + target[1]
         if not PlaceholderRules.canDoMove(move, self.state):
             print("illegal move")
@@ -108,7 +103,11 @@ class Board:
         return move, winner
     
     def to_chess_notation(self, move):
-        if move == '2e4e':
-            return 'Pe4'
-        else:
+        if move == '2f3f':
+            return 'Pf3'
+        elif move == '7e5e':
             return 'Pe5'
+        elif move == '2g4g':
+            return 'Pg4'
+        else:
+            return 'Qh4#'
