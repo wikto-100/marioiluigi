@@ -1,4 +1,7 @@
-use std::ops::{Add, Mul};
+use std::{
+    fmt::{write, Display},
+    ops::{Add, Mul, Sub},
+};
 
 use derive_new::new;
 
@@ -62,45 +65,58 @@ impl Color {
 }
 
 impl Coord {
-    pub const LEFT: Coord = Coord(0, -1);
-    pub const RIGHT: Coord = Coord(0, 1);
-    pub const UP: Coord = Coord(-1, 0);
-    pub const DOWN: Coord = Coord(1, 0);
-    pub const UP_LEFT: Coord = Coord(-1, -1);
-    pub const UP_RIGHT: Coord = Coord(-1, 1);
-    pub const DOWN_LEFT: Coord = Coord(1, -1);
-    pub const DOWN_RIGHT: Coord = Coord(1, 1);
-    pub const BlACK_FIRST_ROW: i32 = 0;
-    pub const BLACK_SECOND_ROW: i32 = 1;
-    pub const WHITE_FIRST_ROW: i32 = 7;
-    pub const WHITE_SECOND_ROW: i32 = 6;
+    pub const LEFT: Coord = Coord::make_x(-1);
+    pub const RIGHT: Coord = Coord::make_x(1);
 
-    pub fn point_of_view_change(&self, c: Color) -> Coord {
+    pub const UP: Coord = Coord::make_y(1);
+    pub const DOWN: Coord = Coord::make_y(-1);
+
+    pub const UP_LEFT: Coord = Coord(-1, 1);
+    pub const UP_RIGHT: Coord = Coord(1, 1);
+
+    pub const DOWN_LEFT: Coord = Coord(-1, -1);
+    pub const DOWN_RIGHT: Coord = Coord(1, -1);
+
+    pub const BlACK_FIRST_ROW: i32 = 8;
+    pub const BLACK_SECOND_ROW: i32 = 7;
+    pub const WHITE_FIRST_ROW: i32 = 1;
+    pub const WHITE_SECOND_ROW: i32 = 2;
+
+    pub fn point_of_view_dir(&self, c: Color) -> Coord {
         match c {
             Color::Black => Coord(-self.0, -self.1),
             Color::White => *self,
         }
     }
-    pub fn is_describing_position(&self) -> bool {
-        return self.0 >= 0 && self.0 < 8 && self.1 >= 0 && self.1 < 8;
+    pub fn is_describing_position(self) -> bool {
+        return self.0 >= 1 && self.0 <= 8 && self.1 >= 1 && self.1 <= 8;
     }
-    pub fn s_point_of_view(u: i32, c: Color) -> i32 {
+    pub fn row_point_of_view(u: i32, c: Color) -> i32 {
         match c {
-            Color::Black => 7 - u,
+            Color::Black => 9 - u,
             Color::White => u,
         }
     }
-    pub fn make_x(u: i32) -> Coord {
-        return Coord(0, u);
-    }
-    pub fn make_y(u: i32) -> Coord {
+    pub const fn make_x(u: i32) -> Coord {
         return Coord(u, 0);
     }
+    pub const fn make_y(u: i32) -> Coord {
+        return Coord(0, u);
+    }
     pub fn x(&self) -> i32 {
-        return self.1;
+        return self.0;
     }
     pub fn y(&self) -> i32 {
-        return self.0;
+        return self.1;
+    }
+    pub fn map(&self, f: impl Fn(i32) -> i32) -> Coord {
+        return Coord(f(self.x()), f(self.y()));
+    }
+    pub fn piecewise_sign(&self) -> Coord {
+        return self.map(i32::signum);
+    }
+    pub fn piecewise_abs(&self) -> Coord {
+        return self.map(i32::abs);
     }
 }
 impl Add for Coord {
@@ -110,11 +126,28 @@ impl Add for Coord {
         return Coord(self.0 + rhs.0, self.1 + rhs.1);
     }
 }
+impl Sub for Coord {
+    type Output = Coord;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        return Coord(self.0 - rhs.0, self.1 - rhs.1);
+    }
+}
 impl Mul<i32> for Coord {
     type Output = Coord;
 
     fn mul(self, rhs: i32) -> Self::Output {
         return Coord(self.0 * rhs, self.1 * rhs);
+    }
+}
+impl Display for Coord {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if Coord::is_describing_position(*self) {
+            let x = ((self.x() - 1) as u8 + 'a' as u8) as char;
+            let y = self.y().to_string();
+            return write!(f, "{x}{y}");
+        }
+        write!(f, "Corrupted({},{})", self.x(), self.y())
     }
 }
 
@@ -128,10 +161,18 @@ impl BoardPiecesState {
     pub fn get_ref(&self) -> &Vec<Vec<Option<ColoredPiece>>> {
         return &self.v;
     }
+    pub fn translate_to_raw(c: Coord) -> Option<(usize, usize)> {
+        if !Coord::is_describing_position(c) {
+            return None;
+        }
+        return Some(((8 - c.1) as usize, (c.0 - 1) as usize));
+    }
     pub fn get(&self, c: Coord) -> Option<ColoredPiece> {
-        return self.v[c.0 as usize][c.1 as usize];
+        let (a, b) = Self::translate_to_raw(c).unwrap();
+        return self.v[a][b];
     }
     pub fn set(&mut self, c: Coord, p: Option<ColoredPiece>) {
-        self.v[c.0 as usize][c.1 as usize] = p;
+        let (a, b) = Self::translate_to_raw(c).unwrap();
+        self.v[a][b] = p;
     }
 }

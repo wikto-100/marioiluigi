@@ -137,9 +137,9 @@ fn try_parse_optional_coord(coord: &str) -> Result<Option<Coord>, String> {
         .try_into()
         .map_err(|e| "Coord contains more or less  than two chars".to_string())?;
 
-    let x = (a as i32) - ('a' as i32);
+    let x = ((a as i32) - ('a' as i32)) + 1;
     let y = (b as i32) - ('0' as i32);
-    return Ok(Some(Coord(8 - y, x)));
+    return Ok(Some(Coord(x, y)));
 }
 fn try_parse_coord(coord: &str) -> Result<Coord, String> {
     return try_parse_optional_coord(coord)
