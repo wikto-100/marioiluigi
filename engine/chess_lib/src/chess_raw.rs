@@ -33,6 +33,11 @@ pub struct BoardPiecesState {
     v: Vec<Vec<Option<ColoredPiece>>>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CastlingType {
+    KingSide,
+    QueenSide,
+}
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct CastlingAvailability {
     pub kingSide: bool,
@@ -49,17 +54,39 @@ pub struct ChessState {
 
     //white then black
     pub castling: [CastlingAvailability; 2],
-    pub enPassant: Option<Coord>,
+    pub en_passant: Option<Coord>,
+}
+pub type Effect = Box<dyn Fn(&mut ChessState)>;
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Move {
+    pub from: Coord,
+    pub to: Coord,
+    pub additional: Option<AdditionalMoveData>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Move(pub Coord, pub Coord);
+pub enum AdditionalMoveData {
+    Promotion(PieceKind),
+    Castling,
+}
+
+impl Display for Move {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}{}", self.from, self.to)
+    }
+}
 
 impl Color {
     pub fn reverse(&self) -> Color {
         match self {
             Color::Black => Color::White,
             Color::White => Color::Black,
+        }
+    }
+    pub fn repr(&self) -> usize {
+        match self {
+            Color::Black => 1,
+            Color::White => 0,
         }
     }
 }
@@ -84,7 +111,7 @@ impl Coord {
 
     pub fn point_of_view_dir(&self, c: Color) -> Coord {
         match c {
-            Color::Black => Coord(-self.0, -self.1),
+            Color::Black => Coord(self.0, -self.1),
             Color::White => *self,
         }
     }
@@ -175,4 +202,41 @@ impl BoardPiecesState {
         let (a, b) = Self::translate_to_raw(c).unwrap();
         self.v[a][b] = p;
     }
+}
+pub struct EffectHelper {}
+impl EffectHelper {
+    pub fn get_change(c: Coord, p: Option<ColoredPiece>) -> Effect {
+        return Box::new(move |s| s.pieces_data.set(c, p));
+    }
+    pub fn apply_effects(effects: &Vec<Effect>, state: &mut ChessState) {
+        for ef in effects {
+            ef(state);
+        }
+    }
+    pub fn get_unmark_castling(c: Color) -> Effect {
+        return Box::new(move |s| s.castling[c.repr()] = CastlingAvailability::NOPE);
+    }
+}
+impl Move {
+    pub fn new(from: Coord, to: Coord) -> Move {
+        return Move {
+            from,
+            to,
+            additional: None,
+        };
+    }
+    pub fn new_with(from: Coord, to: Coord, additional: Option<AdditionalMoveData>) -> Move {
+        return Move {
+            from,
+            to,
+            additional,
+        };
+    }
+}
+
+impl CastlingAvailability {
+    pub const NOPE: CastlingAvailability = CastlingAvailability {
+        kingSide: false,
+        queenSide: false,
+    };
 }

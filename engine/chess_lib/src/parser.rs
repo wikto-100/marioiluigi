@@ -1,3 +1,5 @@
+use std::ops::Add;
+
 use derive_new::new;
 
 use crate::chess_raw::*;
@@ -20,24 +22,7 @@ pub fn parse_piece_repr(t: char) -> Option<ColoredPiece> {
         _ => None,
     };
 }
-pub fn stringify_piece(piece: Option<ColoredPiece>) -> char {
-    if piece.is_none() {
-        return ' ';
-    }
-    let piece = piece.unwrap();
-    let chr = match piece.pieceKind {
-        PieceKind::Pawn => 'p',
-        PieceKind::Knight => 'n',
-        PieceKind::Bishiop => 'b',
-        PieceKind::Rook => 'r',
-        PieceKind::Queen => 'q',
-        PieceKind::King => 'k',
-    };
-    if piece.clr == Color::White {
-        return chr.to_uppercase().next().unwrap();
-    }
-    return chr;
-}
+
 fn try_parse_fen_board(s: &str) -> Result<BoardPiecesState, String> {
     let mut builder: Vec<Vec<Option<ColoredPiece>>> =
         (0..=7).map(|_| (0..=7).map(|_| None).collect()).collect();
@@ -146,10 +131,30 @@ fn try_parse_coord(coord: &str) -> Result<Coord, String> {
         .and_then(|e| e.ok_or("\"-\" value not allowed".to_string()));
 }
 pub fn parse_move(a: &str) -> Result<Move, String> {
-    if a.len() != 4 {
-        return Err("move should have 4 len".to_string());
+    if a.len() != 4 && a.len() != 5 {
+        return Err("move should have 4 len or len 5".to_string());
     }
     let left = try_parse_coord(&a[..2])?; //todo wrap
-    let right = try_parse_coord(&a[2..])?;
-    return Ok(Move(left, right));
+    let right = try_parse_coord(&a[2..4])?;
+    if a.len() == 5 {
+        let chr = a.chars().nth(4).unwrap();
+
+        if chr == 'c' {
+            return Ok(Move::new_with(
+                left,
+                right,
+                Some(AdditionalMoveData::Castling),
+            ));
+        }
+
+        let promotio_kind = parse_piece_repr(chr)
+            .ok_or_else(|| "promotion data includes wrong piece symbol".to_string())?;
+        return Ok(Move::new_with(
+            left,
+            right,
+            Some(AdditionalMoveData::Promotion(promotio_kind.pieceKind)),
+        ));
+    }
+
+    return Ok(Move::new(left, right));
 }

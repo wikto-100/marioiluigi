@@ -1,5 +1,9 @@
 
 
-/engine/target/*
+.vscode
+/engine/chess_lib/target/*
+/engine/chess_lib/.debug/*
+/engine/tester_helper/target/*
+/engine/tester_helper/.debug/*
 /engine/.vscode/*
 /engine/Cargo.lock
