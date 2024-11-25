@@ -7,3 +7,5 @@
 /engine/tester_helper/.debug/*
 /engine/.vscode/*
 /engine/Cargo.lock
+.env
+env

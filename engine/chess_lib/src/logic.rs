@@ -163,8 +163,9 @@ fn handle_king(state: &ChessState, b: Move) -> Option<Vec<Effect>> {
     let mut effects = Vec::new();
     let (from, to) = (b.from, b.to);
     let dif = to - from;
-    let coord_sum = dif.x().abs() + dif.y().abs();
-    if coord_sum == 1 {
+    let x_dif_abs = dif.x().abs();
+    let y_dif_abs = dif.y().abs();
+    if (x_dif_abs + y_dif_abs) == 1 || (x_dif_abs == y_dif_abs && x_dif_abs == 1) {
         raw_move(state, b, &mut effects);
         effects.push(EffectHelper::get_unmark_castling(state.current));
 
@@ -387,7 +388,7 @@ fn find_king_pos(state: &ChessState, clr: Color) -> Coord {
         }
         return c;
     }
-    panic!();
+    panic!("");
 }
 fn is_anything_in_the_way_excluding(
     state: &ChessState,
@@ -403,4 +404,8 @@ fn is_anything_in_the_way_excluding(
         s = s + sign;
     }
     return false;
+}
+
+pub fn is_check(state: &ChessState) -> bool {
+    return can_be_attacked_in_one_move(state, find_king_pos(state, state.current)).unwrap();
 }
