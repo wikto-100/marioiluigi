@@ -1,0 +1,4 @@
+build_release:
+	cargo build --release
+build_python_api_release:
+	maturin build --release 

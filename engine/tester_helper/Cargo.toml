@@ -1,0 +1,7 @@
+[package]
+name = "tester_helper"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+chess_lib = { version = "0.1.0", path = "../chess_lib" }
