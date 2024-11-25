@@ -47,6 +47,21 @@ class ChessAgent:
         self.rewards = []
 
 
+'''
+    data = pd.read_csv('../../datasets/fen_moves.tsv', delimiter='\t')
+    fen_moves_dict = data.groupby('FEN')['Move'].apply(list).to_dict()
+
+    def move(self, board, epsilon=0.1):
+        opening_moves = fen_moves_dict[board.fen()]
+        if opening_moves:
+            return random.choice(opening_moves)
+        return select_move(self,board,epsilon)
+'''
+
+
+
+
+
     def select_move(self, board, epsilon=0.1):
         """
         Wybiera ruch za pomocą polityki sieci i MCTS, jeśli jest dostępny, z wykorzystaniem strategii epsilon-zachłannej.
