@@ -1,6 +1,10 @@
 use std::str;
 
-use crate::{chess_raw::Color, logic, parser, serializer};
+use crate::{
+    chess_raw::Color,
+    logic::{self, is_lost_condition},
+    parser, serializer,
+};
 
 pub fn internal_get_available_moves(board_fen: &str) -> Result<Vec<String>, String> {
     let f = parser::parse_fen(board_fen)?;
@@ -30,4 +34,8 @@ pub fn internal_is_lost_condition(board_fen: &str) -> Result<bool, String> {
 pub fn internal_is_check(board_fen: &str) -> Result<bool, String> {
     let f = parser::parse_fen(board_fen)?;
     return Ok(logic::is_check(&f));
+}
+pub fn internal_is_pat(board_fen: &str) -> Result<bool, String> {
+    let f = parser::parse_fen(board_fen)?;
+    return Ok(logic::get_available_moves(&f).len() == 0 && !is_lost_condition(&f));
 }

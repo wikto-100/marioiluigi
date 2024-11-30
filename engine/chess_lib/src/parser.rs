@@ -73,6 +73,10 @@ fn try_parse_castling(s: &str) -> Result<[CastlingAvailability; 2], String> {
         return Err("Castling data is too long".to_string());
     }
 
+    if s == "-" {
+        return Ok([CastlingAvailability::NOPE, CastlingAvailability::NOPE]);
+    }
+
     let mut amount = 0;
     if s.contains("K") {
         white.kingSide = true;
@@ -120,7 +124,7 @@ fn try_parse_optional_coord(coord: &str) -> Result<Option<Coord>, String> {
         .chars()
         .collect::<Vec<_>>()
         .try_into()
-        .map_err(|e| "Coord contains more or less  than two chars".to_string())?;
+        .map_err(|e| "Coord contains more or less than two chars".to_string())?;
 
     let x = ((a as i32) - ('a' as i32)) + 1;
     let y = (b as i32) - ('0' as i32);

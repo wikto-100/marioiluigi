@@ -44,7 +44,6 @@ pub struct CastlingAvailability {
     pub queenSide: bool,
 }
 
-//todo: add en passant filed
 //todo: add halfmove clock
 //todo: add fullmove number
 #[derive(Debug, Clone, new)]
