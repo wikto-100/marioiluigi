@@ -33,6 +33,10 @@ pub fn is_lost_condition(board_fen: &str) -> PyResult<bool> {
 pub fn is_check(board_fen: &str) -> PyResult<bool> {
     return convert_to_py_result(api_template::internal_is_check(board_fen));
 }
+#[pyfunction]
+pub fn is_pat(board_fen: &str) -> PyResult<bool> {
+    return convert_to_py_result(api_template::internal_is_pat(board_fen));
+}
 
 #[pymodule]
 fn chess_lib(m: &Bound<'_, PyModule>) -> PyResult<()> {

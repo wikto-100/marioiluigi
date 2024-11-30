@@ -1,11 +1,9 @@
-
-
 .vscode
-/engine/chess_lib/target/*
-/engine/chess_lib/.debug/*
-/engine/tester_helper/target/*
-/engine/tester_helper/.debug/*
-/engine/.vscode/*
-/engine/Cargo.lock
+target
+.debug
+.vscode
+build
 .env
 env
+__pycache__
+

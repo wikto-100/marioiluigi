@@ -31,3 +31,7 @@ pub fn internal_is_check(board_fen: &str) -> Result<bool, String> {
     let f = parser::parse_fen(board_fen)?;
     return Ok(logic::is_check(&f));
 }
+pub fn internal_is_pat(board_fen: &str) -> Result<bool, String> {
+    let f = parser::parse_fen(board_fen)?;
+    return Ok(logic::get_available_moves(&f).len() == 0 && !logic::is_lost_condition(&f));
+}

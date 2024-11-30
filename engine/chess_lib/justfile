@@ -1,4 +1,16 @@
 build_release:
 	cargo build --release
 build_python_api_release:
-	maturin build --release 
+	maturin build --release  --features="python_api"
+build_cpp_api_release:
+	cargo rustc  --crate-type=staticlib --release --features="cpp_api"
+
+build_cpp_test_fresh:
+	@just build_cpp_api_release
+	g++  -o cpp_api_tester/build/test  cpp_api_tester/main.cpp -L target/release   -lchess_lib  -lpthread -ldl -g
+run_cpp_test_fresh:
+	@just build_cpp_test_fresh
+	./cpp_api_tester/build/test
+
+
+
