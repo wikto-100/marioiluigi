@@ -224,3 +224,13 @@ def get_legal_moves(board):
     legal_moves = available_moves_str.strip().split('\n')
 
     return legal_moves
+
+def is_game_over(board):
+    """
+    args:
+        stan planszy w fen
+    returns:
+        true - jesli gra skonczona
+        false - w przeciwnym
+    """
+    return false
