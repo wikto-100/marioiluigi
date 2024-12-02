@@ -86,7 +86,9 @@ class ChessAgent:
             move = self._select_move_with_mcts(board, state, action_mask)
             if move:
                 return move  # Ruch został pomyślnie wybrany przez MCTS
-
+            else:
+                self._select_move_with_policy(board, state, action_mask)
+            
         # Użyj polityki sieci do wyboru ruchu
         return self._select_move_with_policy(board, state, action_mask)
 
@@ -235,11 +237,11 @@ class ChessAgent:
 
     def learn(self):
         """
-        Wykonuje krok uczenia, aktualizując sieć neuronową na podstawie zapisanych logarytmicznych prawdopodobieństw i nagród.
+        Wykonuje krok uczenia, aktualizując sieć neuronową na podstawie zapisanych logarytmów prawdopodobieństwa i nagród.
         """
         if not self.rewards:
             logger.debug("Brak nagród do nauki.")
-            return  # Brak nagród do nauki
+            return  # Brak danych do nauki
 
         self.model.train()
 
@@ -252,49 +254,53 @@ class ChessAgent:
 
         discounted_rewards = torch.tensor(discounted_rewards, device=self.device)
 
-        # Odjęcie wartości bazowej: odejmij średnią, aby zmniejszyć wariancję
-        baseline = discounted_rewards.mean()
-        discounted_rewards = discounted_rewards - baseline
+        # Normalizacja zdyskontowanych nagród (opcjonalna)
+        #if len(discounted_rewards) > 1:  # Sprawdź, czy są wystarczające dane do normalizacji
+        #    mean = discounted_rewards.mean()
+        #    std = discounted_rewards.std()
+        #    if std > 0:
+        #        discounted_rewards = (discounted_rewards - mean) / (std + 1e-9)
 
-        # Normalizacja nagród
-        std = discounted_rewards.std()
-        if std > 0:
-            discounted_rewards = discounted_rewards / (std + 1e-9)
+        # Upewnij się, że zdyskontowane nagrody mają włączone śledzenie gradientów
+        # discounted_rewards = discounted_rewards.clone().detach()
 
-        # Filtruj log_probs i nagrody, aby uwzględnić tylko te, które wymagają gradientów
+        # Oblicz straty
         policy_losses = []
         entropy_losses = []
         for log_prob, reward in zip(self.log_probs, discounted_rewards):
             if log_prob.requires_grad:
                 policy_losses.append(-log_prob * reward)
-                # Regularizacja entropii (opcjonalna)
+                # Opcjonalna regularizacja entropii
                 entropy = -(torch.exp(log_prob) * log_prob)
                 entropy_losses.append(entropy)
 
         if not policy_losses:
-            logger.debug("Brak prawidłowych log_probs do nauki po filtracji.")
-            # Zresetuj pamięć, nawet jeśli nie ma nic do nauki
+            logger.debug("Brak prawidłowych log_probs do nauki.")
+            # Wyczyść zapisane nagrody i log_probs nawet jeśli nie ma danych do nauki
             self.log_probs = []
             self.rewards = []
             return
 
-        # Stosuj i sumuj straty
+        # Sumowanie strat
         policy_loss = torch.stack(policy_losses).sum()
-        entropy_loss = torch.stack(entropy_losses).sum() * self.entropy_coef  # Współczynnik entropii (hiperparametr)
-
+        entropy_loss = torch.stack(entropy_losses).sum() * self.entropy_coef if entropy_losses else 0
         total_loss = policy_loss + entropy_loss
 
-        # Backpropagacja i optymalizacja
+        # Backpropagation (propagacja wsteczna)
         self.optimizer.zero_grad()
         total_loss.backward()
-        # Obcinanie gradientów
+        # Ograniczenie gradientów dla stabilności
         torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
         self.optimizer.step()
 
-        # Zresetuj pamięć
+        # Wyczyść zapisane nagrody i log_probs
         self.log_probs = []
         self.rewards = []
-        logger.debug("Parametry modelu zostały zaktualizowane.")
+
+        logger.debug("Parametry modelu zaktualizowane.")
+
+
+
 
 
 
