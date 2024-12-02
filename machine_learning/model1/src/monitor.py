@@ -8,24 +8,24 @@ def main():
     dirname = os.path.dirname(__file__)
     # Domyślne ścieżki
     default_load_path = None  # os.path.join(dirname, 'models', 'chess_agent_checkpoint.pth')
-    default_save_path = os.path.join(dirname, 'models', 'chess_agent_checkpoint.pth')
-    default_best_save_path = os.path.join(dirname, 'best_models', 'best_chess_agent_checkpoint.pth')
+    default_save_path = os.path.join(dirname,'..', 'models', 'chess_agent_checkpoint.pth')
+    default_best_save_path = os.path.join(dirname, '..', 'best_models', 'best_chess_agent_checkpoint.pth')
     default_fig_path = os.path.join(dirname, 'training_progress.png')
-    default_stockfish_path = os.path.join(dirname, 'stockfish', 'stockfish-ubuntu-x86-64')
-    default_mcts_path = os.path.join(dirname, 'mcts_engine', 'mcts_engine')
+    default_stockfish_path = os.path.join(dirname, '..', 'stockfish', 'stockfish-ubuntu-x86-64')
+    default_mcts_path = None #os.path.join(dirname, 'mcts', 'mcts_engine')
 
     parser = argparse.ArgumentParser(description='Trenuj i monitoruj agenta szachowego')
 
     # Argumenty treningu
-    parser.add_argument('--num_episodes', type=int, default=100, help='Liczba epizodów treningowych')
-    parser.add_argument('--max_moves', type=int, default=200, help='Maksymalna liczba ruchów na grę')
+    parser.add_argument('--num_episodes', type=int, default=50, help='Liczba epizodów treningowych')
+    parser.add_argument('--max_moves', type=int, default=100, help='Maksymalna liczba ruchów na grę')
     parser.add_argument('--agent_color', type=str, choices=['white', 'black'], default='white', help='Kolor agenta')
     parser.add_argument('--device', type=str, default='cuda', choices=['cpu', 'cuda'], help='Urządzenie do treningu')
     parser.add_argument('--save_every', type=int, default=100, help='Liczba epizodów pomiędzy zapisami modelu')
     parser.add_argument('--load_checkpoint', type=str, default=default_load_path, help='Ścieżka do wczytania wcześniej wytrenowanego modelu')
 
     # Argumenty wizualizacji
-    parser.add_argument('--plot_window', type=int, default=50, help='Rozmiar okna dla wykresu średniej ruchomej')
+    parser.add_argument('--plot_window', type=int, default=10, help='Rozmiar okna dla wykresu średniej ruchomej')
     parser.add_argument('--save_plot', action='store_true', help='Zapisz wykres postępu treningu do pliku')
     parser.add_argument('--fig_path', type=str, default=default_fig_path, help='Ścieżka do zapisu wykresu postępu treningu')
 

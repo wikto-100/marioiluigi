@@ -20,8 +20,6 @@ class ChessEnvironment:
         self.agent_color = agent_color
         self.stockfish = chess.engine.SimpleEngine.popen_uci(stockfish_path) if stockfish_path else None
         self.stockfish_depth = stockfish_depth  # Dynamiczne zarządzanie głębokością
-        self.previous_eval = None
-
         if not self.stockfish:
             logger.warning("Silnik Stockfish nie został zainicjalizowany. Przeciwnik i ocena pozycji nie będą działać.")
 
@@ -33,8 +31,7 @@ class ChessEnvironment:
         - Ocena pozycji (int) lub None, jeśli niedostępna.
         """
         self.board.reset()
-        self.previous_eval = self.get_stockfish_evaluation()
-        return self.previous_eval
+        return
 
     def get_stockfish_evaluation(self):
         """

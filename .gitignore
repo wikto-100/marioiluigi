@@ -7,3 +7,6 @@ build
 env
 __pycache__
 
+machine_learning/model1/best_models/best_chess_agent_checkpoint.pth
+machine_learning/model1/models/chess_agent_checkpoint.pth
+machine_learning/model1/src/mcts/mcts_engine

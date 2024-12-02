@@ -19,7 +19,7 @@ def train_agent(num_episodes=1000, max_moves=100, agent_color=chess.WHITE, devic
                 best_save_path='best_chess_agent_checkpoint.pth',
                 load_checkpoint=None, stockfish_path=None, mcts_binary_path=None,
                 learning_rate=0.0001, gamma=0.95, entropy_coef=0.05,
-                initial_epsilon=1.0, final_epsilon=0.1, decay_rate=0.995):
+                initial_epsilon=1.0, final_epsilon=0.1, decay_rate=0.7):
     """
     Trenuj agenta szachowego przez określoną liczbę epizodów, korzystając z epsilon-greedy.
 
@@ -158,6 +158,7 @@ def train_agent(num_episodes=1000, max_moves=100, agent_color=chess.WHITE, devic
         logger.error(f"Wystąpił błąd: {e}")
     finally:
         env.close()
+        agent.close_mcts()
         logger.info("ChessEnvironment zamknięte.")
 
     return rewards_history, moving_avg

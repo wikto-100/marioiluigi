@@ -31,8 +31,8 @@ def calculate_in_game_reward(previous_eval, current_eval, agent_color, previous_
     - float: Natychmiastowa nagroda.
     """
     alpha = 0.01
-    beta = 0.1
-    gamma = 0.05
+    beta = 0
+    gamma = 0
 
     eval_change_reward = 0.0
     material_reward = 0.0
