@@ -10,11 +10,22 @@ from src.luigi_cnn import LuigiCNN
 from src.chess_utils import get_move_index, convert_state, mask_and_valid_moves
 from mcts.mcts_interface import get_best_move as Mario_get_best_move
 
+"""A"""
+from add_openings import get_openings
+"""A"""
+
 
 class ChessAgent:
-    def __init__(self, input_model_path=None, name=None):
+    def __init__(self, input_model_path=None, name=None, use_openings=True):
         self.name = name
         
+        """A"""
+        if use_openings:
+            self.openings_dict = get_openings()
+        else:
+            self.openings_dict = {}
+        """A"""
+
         # Parametry eksploracji
         self.epsilon = 1
         self.epsilon_decay = 0.99
@@ -92,6 +103,17 @@ class ChessAgent:
         )
 
     def select_action(self, board):
+        """A"""
+        fen = board.fen()
+        if fen in self.openings_dict:
+            logging.info(f"uzycie ruchu otwarcia dla FEN: {fen}")
+            opening_moves = self.fen_moves_dict[fen]
+            chosen_move = random.choice(opening_moves)
+            return get_move_index(chosen_move), chosen_move, convert_state(board), None
+        """A"""
+
+
+
         bit_state = convert_state(board)
         valid_moves_tensor, valid_move_dict = mask_and_valid_moves(board)
         valid_moves_tensor = valid_moves_tensor.to(self.device)
