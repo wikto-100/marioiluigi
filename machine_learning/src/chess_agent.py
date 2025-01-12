@@ -11,7 +11,7 @@ from src.chess_utils import get_move_index, convert_state, mask_and_valid_moves
 from mcts.mcts_interface import get_best_move as Mario_get_best_move
 
 """A"""
-from add_openings import get_openings
+from src.openings.add_openings import get_openings
 """A"""
 
 
@@ -103,20 +103,21 @@ class ChessAgent:
         )
 
     def select_action(self, board):
-        """A"""
-        fen = board.fen()
-        if fen in self.openings_dict:
-            logging.info(f"uzycie ruchu otwarcia dla FEN: {fen}")
-            opening_moves = self.fen_moves_dict[fen]
-            chosen_move = random.choice(opening_moves)
-            return get_move_index(chosen_move), chosen_move, convert_state(board), None
-        """A"""
-
-
-
         bit_state = convert_state(board)
         valid_moves_tensor, valid_move_dict = mask_and_valid_moves(board)
         valid_moves_tensor = valid_moves_tensor.to(self.device)
+
+
+        fen = board.fen()
+        if fen in self.openings_dict:
+            logging.info(f"uzycie ruchu otwarcia dla FEN: {fen}")
+            opening_moves = self.openings_dict[fen]
+            chosen_move = chess.Move.from_uci(random.choice(opening_moves))
+            return get_move_index(chosen_move), chosen_move, bit_state, valid_moves_tensor
+        else:
+            logging.info(f"pozycja: {fen} nie znajduje sie w bazie otwarc")
+
+
 
         if random.uniform(0, 1) <= self.epsilon:
             if random.uniform(0, 1) <= self.mcts_move_prob:

@@ -111,21 +111,34 @@ def choose_move(agent, board: Board) -> chess.Move:
             logger.debug(f"Losowo wybrany ruch: {chosen_move}")
             return chosen_move
 
+        chosen_move_index = -1
+        fen = board.fen()
+        if fen in agent.openings_dict:
+            #najpierw sprawdz czy idziemy openingiem
+            logging.info(f"uzycie ruchu otwarcia dla FEN: {fen}")
+            opening_moves = agent.openings_dict[fen]
+            chosen_move = chess.Move.from_uci(random.choice(opening_moves))
+            chosen_move_index = get_move_index(chosen_move)
+        else:
+            logging.info(f"pozycja: {fen} nie znajduje sie w bazie otwarc")
+
         # Wybór ruchu na podstawie agenta
         bit_state = convert_state(board)
         valid_moves_tensor, valid_move_dict = mask_and_valid_moves(board)
 
-        with torch.no_grad():
-            # **1. Przenieś tensory na urządzenie agenta**
-            tensor = (
-                torch.from_numpy(bit_state).float().unsqueeze(0).to(agent.device)
-            )  # Obsługa GPU
-            valid_moves_tensor = valid_moves_tensor.to(agent.device)  # Obsługa GPU
+        if chosen_move_index == -1:
+            #jesli ruchu nie bylo w bazie openingow
+            with torch.no_grad():
+                # **1. Przenieś tensory na urządzenie agenta**
+                tensor = (
+                    torch.from_numpy(bit_state).float().unsqueeze(0).to(agent.device)
+                )  # Obsługa GPU
+                valid_moves_tensor = valid_moves_tensor.to(agent.device)  # Obsługa GPU
 
-            policy_values = agent.policy_net(tensor, valid_moves_tensor)
+                policy_values = agent.policy_net(tensor, valid_moves_tensor)
 
-            # **2. Przenieś policy_values z powrotem na CPU (jeśli konieczne) i konwertuj na liczbę całkowitą**
-            chosen_move_index = int(policy_values.argmax(dim=1).item())
+                # **2. Przenieś policy_values z powrotem na CPU (jeśli konieczne) i konwertuj na liczbę całkowitą**
+                chosen_move_index = int(policy_values.argmax(dim=1).item())
 
         chosen_move = valid_move_dict.get(chosen_move_index, None)
         if chosen_move is None:
@@ -220,3 +233,34 @@ def read_fen(fen_path: str):
     """
     with open(fen_path, 'r') as fen_file:
         return fen_file.readline()
+
+
+
+
+"""A"""
+def simple_test(agent_white, agent_black, board_config: Optional[str] = None) -> None:
+    try:
+        # Inicjalizuj planszę
+        board = chess.Board(board_config) if board_config else chess.Board()
+        logger.info(
+            f"Rozpoczęcie partii z planszą: {board.fen()}"
+        )
+
+        while not board.is_game_over(claim_draw=True):
+            # Sprawdź, czyja jest tura
+            if board.turn == chess.WHITE:
+                move = choose_move(agent_white, board)
+                logger.info(f"Białe ({agent_white.name}) grają: {move}")
+            else:
+                move = choose_move(agent_black, board)
+                logger.info(f"Czarne ({agent_black.name}) grają: {move}")
+
+            board.push(move)
+
+        result = board.result(claim_draw=True)
+        logger.info(f"Partia zakończona wynikiem: {result}")
+
+    except Exception as e:
+        logger.error(f"Błąd podczas partii: {e}")
+
+"""A"""
