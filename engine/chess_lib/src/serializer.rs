@@ -7,7 +7,7 @@ pub fn charify_piece(piece: Option<ColoredPiece>) -> char {
         return ' ';
     }
     let piece = piece.unwrap();
-    let chr = match piece.pieceKind {
+    let chr = match piece.piece_kind {
         PieceKind::Pawn => 'p',
         PieceKind::Knight => 'n',
         PieceKind::Bishiop => 'b',

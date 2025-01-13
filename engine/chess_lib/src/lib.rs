@@ -9,7 +9,7 @@ mod cpp_api;
 pub mod python_api;
 
 pub mod serializer;
-mod test;
+pub mod test;
 use derive_new::new;
 
 #[no_mangle]

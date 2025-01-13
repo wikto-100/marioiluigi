@@ -1,1 +1,1 @@
-mod logic_test;
+pub mod logic_test;

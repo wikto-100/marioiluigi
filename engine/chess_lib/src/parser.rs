@@ -156,7 +156,7 @@ pub fn parse_move(a: &str) -> Result<Move, String> {
         return Ok(Move::new_with(
             left,
             right,
-            Some(AdditionalMoveData::Promotion(promotio_kind.pieceKind)),
+            Some(AdditionalMoveData::Promotion(promotio_kind.piece_kind)),
         ));
     }
 
