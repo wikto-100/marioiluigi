@@ -1,6 +1,7 @@
 import os
 import random
 import logging
+import chess
 
 import numpy as np
 import torch
@@ -10,21 +11,18 @@ from src.luigi_cnn import LuigiCNN
 from src.chess_utils import get_move_index, convert_state, mask_and_valid_moves
 from mcts.mcts_interface import get_best_move as Mario_get_best_move
 
-"""A"""
 from src.openings.add_openings import get_openings
-"""A"""
+from src.alpha_zero_net import AlphaZeroNet
 
 
 class ChessAgent:
     def __init__(self, input_model_path=None, name=None, use_openings=True):
         self.name = name
         
-        """A"""
         if use_openings:
             self.openings_dict = get_openings()
         else:
             self.openings_dict = {}
-        """A"""
 
         # Parametry eksploracji
         self.epsilon = 1
@@ -51,7 +49,9 @@ class ChessAgent:
         logging.info(f"Używane urządzenie: {self.device}")
 
         # Inicjalizuj sieć polityki i przenieś ją na wybrane urządzenie
-        self.policy_net = LuigiCNN().to(self.device)  # **2. Przenieś model na urządzenie**
+
+        #self.policy_net = LuigiCNN().to(self.device)  # **2. Przenieś model na urządzenie**
+        self.policy_net = AlphaZeroNet().to(self.device)
 
         # Załaduj wytrenowany model, jeśli istnieje
         if input_model_path is not None and os.path.exists(input_model_path):
@@ -114,9 +114,6 @@ class ChessAgent:
             opening_moves = self.openings_dict[fen]
             chosen_move = chess.Move.from_uci(random.choice(opening_moves))
             return get_move_index(chosen_move), chosen_move, bit_state, valid_moves_tensor
-        else:
-            logging.info(f"pozycja: {fen} nie znajduje sie w bazie otwarc")
-
 
 
         if random.uniform(0, 1) <= self.epsilon:
