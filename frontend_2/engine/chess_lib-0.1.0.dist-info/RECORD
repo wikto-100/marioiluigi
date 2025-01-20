@@ -1,0 +1,5 @@
+chess_lib-0.1.0.dist-info/METADATA,sha256=kxUy49Xu6CFULecRWZllM1gqZ7kohqzDzzw2G6HcFpg,53
+chess_lib-0.1.0.dist-info/WHEEL,sha256=Eon-X1H-_QAARJHJrle01PrnTNoTi49kSjaP6kGdlhU,108
+chess_lib/__init__.py,sha256=WtZqu3jfi6bKj7N-ZcyZ7PagiSBqaLeyXcuarMZwPgY,119
+chess_lib/chess_lib.cpython-310-x86_64-linux-gnu.so,sha256=agknSsKkL8r5DmWLa3TzS9I-kwQI9GCmLRhi5cxLA48,4837776
+chess_lib-0.1.0.dist-info/RECORD,,

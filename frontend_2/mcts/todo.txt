@@ -1,0 +1,9 @@
+Opcjonalnie:
+- wprowadzić multithreading do MCTS na rolloutach
+- poprawić selekcję z roota
+- napisać jakąś prostą heurystykę do grania w rolloutach
+- usunąć random shuffling w pythonie tablicy ruchów przekazywanej jako root_moves
+- poprawić ogólnie wszystko
+
+
+Ten mcts jest słaby, ale spędziłem nad nim zdecydowanie za dużo czasu
