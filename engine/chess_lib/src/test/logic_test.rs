@@ -1,13 +1,12 @@
-use std::{collections::HashSet, hash::Hash};
+use std::collections::HashSet;
 
-use itertools::Itertools;
 use lazy_static::lazy_static;
 use rand::Rng;
 
 use crate::{
-    chess_raw::{ChessState, Coord, Move},
-    logic::{self, can_do_move},
-    parser, serializer,
+    chess_raw::{ChessState, Move},
+    logic::{self},
+    parser,
 };
 
 lazy_static! {
@@ -64,9 +63,9 @@ pub fn test_king_moves() {
 #[test]
 pub fn get_available_moves_fast_test() {
     let mut r = rand_mt::Mt19937GenRand32::new(3333);
-    for i in 1..100 {
+    for _ in 1..100 {
         let mut s = STARTING_POS.clone();
-        for j in 1..100 {
+        for _ in 1..100 {
             let fast: HashSet<Move> =
                 HashSet::from_iter(logic::get_available_moves(&s).into_iter());
             let mut dif: HashSet<Move> =
@@ -81,7 +80,7 @@ pub fn get_available_moves_fast_test() {
                 break;
             }
             let any = fast.into_iter().nth(r.gen_range(0..len)).unwrap();
-            logic::apply_move(&mut s, any);
+            logic::apply_move(&mut s, any).unwrap();
         }
     }
 }

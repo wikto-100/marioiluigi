@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use pyo3::{exceptions::PyValueError, prelude::*};
 
 use crate::api_template;

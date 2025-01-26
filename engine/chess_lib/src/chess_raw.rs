@@ -1,5 +1,5 @@
 use std::{
-    fmt::{write, Display},
+    fmt::Display,
     ops::{Add, Mul, Sub},
 };
 
@@ -44,8 +44,8 @@ pub enum CastlingType {
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct CastlingAvailability {
-    pub kingSide: bool,
-    pub queenSide: bool,
+    pub king_side: bool,
+    pub queen_side: bool,
 }
 
 //todo: add halfmove clock
@@ -70,14 +70,13 @@ pub struct Move {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum AdditionalMoveData {
     Promotion(PieceKind),
-    Castling,
+    //Legacy
 }
 
 impl Display for Move {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.additional {
             None => write!(f, "{}{}", self.from, self.to),
-            Some(AdditionalMoveData::Castling) => write!(f, "{}{}c", self.from, self.to),
             Some(AdditionalMoveData::Promotion(kind)) => write!(
                 f,
                 "{}{}{}",
@@ -119,7 +118,7 @@ impl Coord {
     pub const DOWN_LEFT: Coord = Coord(-1, -1);
     pub const DOWN_RIGHT: Coord = Coord(1, -1);
 
-    pub const BlACK_FIRST_ROW: i32 = 8;
+    pub const BLACK_FIRST_ROW: i32 = 8;
     pub const BLACK_SECOND_ROW: i32 = 7;
     pub const WHITE_FIRST_ROW: i32 = 1;
     pub const WHITE_SECOND_ROW: i32 = 2;
@@ -195,7 +194,7 @@ impl Display for Coord {
 
 impl BoardPiecesState {
     pub fn new(v: Vec<Vec<Option<ColoredPiece>>>) -> Option<BoardPiecesState> {
-        if (v.len() == 8 && v.iter().all(|a| a.len() == 8)) {
+        if v.len() == 8 && v.iter().all(|a| a.len() == 8) {
             return Some(Self { v });
         }
         return None;
@@ -251,7 +250,7 @@ impl Move {
 
 impl CastlingAvailability {
     pub const NOPE: CastlingAvailability = CastlingAvailability {
-        kingSide: false,
-        queenSide: false,
+        king_side: false,
+        queen_side: false,
     };
 }
