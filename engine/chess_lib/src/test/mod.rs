@@ -1,1 +1,2 @@
-mod logic_test;
+#[cfg(test)]
+pub mod logic_test;

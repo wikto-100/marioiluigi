@@ -12,8 +12,6 @@ fn set_error(s: Option<String>) {
     *Api_Error.lock().unwrap() = s;
 }
 
-fn pointer_to_str(a: *const c_char) {}
-
 #[no_mangle]
 pub extern "C" fn chess_lib_get_error() -> *const c_char {
     let mut guard = Api_Error.lock().unwrap();

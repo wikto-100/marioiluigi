@@ -1,5 +1,3 @@
-use std::ops::Not;
-
 use crate::chess_raw::*;
 
 pub fn charify_piece(piece: Option<ColoredPiece>) -> char {
@@ -7,7 +5,7 @@ pub fn charify_piece(piece: Option<ColoredPiece>) -> char {
         return ' ';
     }
     let piece = piece.unwrap();
-    let chr = match piece.pieceKind {
+    let chr = match piece.piece_kind {
         PieceKind::Pawn => 'p',
         PieceKind::Knight => 'n',
         PieceKind::Bishiop => 'b',
@@ -28,20 +26,20 @@ pub fn charify_color(clr: Color) -> char {
 }
 fn serialize_fen_castling_av(a: [CastlingAvailability; 2]) -> String {
     let [white, black] = a;
-    if !white.kingSide && !white.queenSide && !black.kingSide && !white.kingSide {
+    if !white.king_side && !white.queen_side && !black.king_side && !white.king_side {
         return "-".to_string();
     }
     let mut builder = String::new();
-    if white.kingSide {
+    if white.king_side {
         builder += "K";
     }
-    if white.queenSide {
+    if white.queen_side {
         builder += "Q";
     }
-    if black.kingSide {
+    if black.king_side {
         builder += "k";
     }
-    if black.queenSide {
+    if black.queen_side {
         builder += "q";
     }
     return builder;
@@ -52,7 +50,7 @@ fn serialize_fen_placement(s: &ChessState) -> String {
 
     for y in (1..=8).rev() {
         let mut counter = 0;
-        for x in (1..=8) {
+        for x in 1..=8 {
             let c = Coord(x, y);
             match s.pieces_data.get(c) {
                 Some(p) => {

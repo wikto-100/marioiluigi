@@ -1,6 +1,8 @@
 use std::{
+    collections::HashSet,
     io::{stdin, stdout, Write},
     process::exit,
+    time::Instant,
 };
 
 use chess_lib::{chess_raw::ChessState, serializer};
@@ -44,10 +46,40 @@ pub fn sim(s: &mut ChessState) {
                 continue;
             }
             if buf.trim() == "list" {
-                let possible = logic::get_available_moves(&s);
+                let t = Instant::now();
+                let moves = logic::get_available_moves(&s);
+                let fast = (Instant::now() - t).as_micros();
+                println!("fast took {}", fast);
+
+                let t = Instant::now();
+                let slow_moves = logic::get_available_moves_slow(&s);
+                let slow = (Instant::now() - t).as_micros();
+                println!("slow took {}", slow);
+
+                println!("gain {}", slow as f32 / fast as f32);
+
+                let mut possible: HashSet<_> = HashSet::from_iter(moves.into_iter());
+                let mut possible_slow: HashSet<_> =
+                    HashSet::from_iter(logic::get_available_moves_slow(&s).into_iter());
+
+                if possible != possible_slow {
+                    println!("NOT THE SAMEE");
+                    println!("{} {}", possible.len(), possible_slow.len());
+                    for el in &possible_slow {
+                        println!("{el}");
+                    }
+                    println!("vs");
+                    for el in &possible {
+                        println!("{el}");
+                    }
+                    println!("end");
+                    
+                }
+
                 for el in possible {
                     println!("{el}");
                 }
+
                 continue;
             }
             if buf.trim() == "redraw" {

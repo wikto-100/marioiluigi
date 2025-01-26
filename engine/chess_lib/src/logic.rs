@@ -1,9 +1,10 @@
 use core::panic;
-use std::ops::Not;
 
 use itertools::Itertools;
 
 use crate::chess_raw::*;
+
+const MAX_MAP: [[[Option<Coord>; 65]; 2]; 6] = generate_max_move_map();
 
 fn raw_move(state: &ChessState, b: Move, effects_ref: &mut Vec<Effect>) {
     effects_ref.push(EffectHelper::get_change(
@@ -107,11 +108,11 @@ fn handle_rook(state: &ChessState, b: Move) -> Option<Vec<Effect>> {
 
     if from == Coord(1, Coord::row_point_of_view(1, us.clr)) {
         effects.push(Box::new(move |s| {
-            s.castling[us.clr.repr()].queenSide = false;
+            s.castling[us.clr.repr()].queen_side = false;
         }))
     } else if from == Coord(8, Coord::row_point_of_view(1, us.clr)) {
         effects.push(Box::new(move |s| {
-            s.castling[us.clr.repr()].kingSide = false;
+            s.castling[us.clr.repr()].king_side = false;
         }))
     }
 
@@ -183,8 +184,8 @@ fn handle_castling(state: &ChessState, b: Move) -> Option<Vec<Effect>> {
     };
 
     match t {
-        CastlingType::KingSide if !state.castling[state.current.repr()].kingSide => return None,
-        CastlingType::QueenSide if !state.castling[state.current.repr()].queenSide => return None,
+        CastlingType::KingSide if !state.castling[state.current.repr()].king_side => return None,
+        CastlingType::QueenSide if !state.castling[state.current.repr()].queen_side => return None,
         _ => {}
     };
 
@@ -192,8 +193,7 @@ fn handle_castling(state: &ChessState, b: Move) -> Option<Vec<Effect>> {
     //for know we assume the castling data is correct (at least the rook and king are in the correct positions)
 
     let piece = state.pieces_data.get(b.from).unwrap();
-    let clr = piece.clr;
-    if piece.pieceKind != PieceKind::King {
+    if piece.piece_kind != PieceKind::King {
         return None;
     }
     if !((t == CastlingType::KingSide && b.to == b.from + Coord::make_x(2))
@@ -233,13 +233,156 @@ fn handle_castling(state: &ChessState, b: Move) -> Option<Vec<Effect>> {
     return Some(effects);
 }
 
+//for every piece
+//for every color
+//list of coords
+pub const fn generate_max_move_map() -> [[[Option<Coord>; 65]; 2]; 6] {
+    const N: usize = 65;
+    const fn insert<const N1: usize, const N2: usize>(inp: &[Coord; N1]) -> [Option<Coord>; N2] {
+        let mut a: [Option<Coord>; N2] = [None; N2];
+        let mut i = 0;
+        while i < N1 {
+            a[i] = Some(inp[i]);
+            i += 1;
+        }
+        a[i] = None;
+        return a;
+    }
+    const fn get_pawn_white() -> [Option<Coord>; N] {
+        return insert(&[Coord::UP, Coord::UP_TWICE, Coord::UP_LEFT, Coord::UP_RIGHT]);
+    }
+    const fn get_pawn_black() -> [Option<Coord>; N] {
+        return insert(&[
+            Coord::DOWN,
+            Coord::DOWN_TWICE,
+            Coord::DOWN_LEFT,
+            Coord::DOWN_RIGHT,
+        ]);
+    }
+    const fn get_knight() -> [Option<Coord>; N] {
+        return insert(&[
+            Coord(1, 2),
+            Coord(-1, 2),
+            Coord(1, -2),
+            Coord(-1, -2),
+            Coord(2, 1),
+            Coord(2, -1),
+            Coord(-2, 1),
+            Coord(-2, -1),
+        ]);
+    }
+    const fn get_bishop() -> [Coord; 32] {
+        let mut a: [Coord; 32] = [Coord(0, 0); 32];
+        let mut i: i32 = 0;
+        while i < 8 {
+            a[i as usize] = Coord(i + 1, i + 1);
+            a[(i + 8) as usize] = Coord(-(i + 1), -(i + 1));
+            a[(i + 16) as usize] = Coord(i + 1, -(i + 1));
+            a[(i + 24) as usize] = Coord(-(i + 1), i + 1);
+            i += 1;
+        }
+        return a;
+    }
+    const fn get_rook() -> [Coord; 32] {
+        let mut a: [Coord; 32] = [Coord(0, 0); 32];
+        let mut i: i32 = 0;
+        while i < 8 {
+            a[i as usize] = Coord(0, i + 1);
+            a[(i + 8) as usize] = Coord(0, -(i + 1));
+            a[(i + 16) as usize] = Coord(i + 1, 0);
+            a[(i + 24) as usize] = Coord(-(i + 1), 0);
+            i += 1;
+        }
+        return a;
+    }
+    const fn get_queen() -> [Coord; 64] {
+        let b = get_bishop();
+        let r = get_rook();
+        //note: even tho 64 may seem like bruteforcing all options, most of them will be instantly discarded
+        //as they are out of border
+        let mut a: [Coord; 64] = [Coord(0, 0); 64];
+        let mut i = 0;
+        while i < 32 {
+            a[i] = b[i];
+            a[i + 32] = r[i];
+            i += 1;
+        }
+        return a;
+    }
+
+    const fn get_king() -> [Coord; 8] {
+        return [
+            Coord::LEFT,
+            Coord::RIGHT,
+            Coord::UP,
+            Coord::DOWN,
+            Coord::UP_LEFT,
+            Coord::UP_RIGHT,
+            Coord::DOWN_LEFT,
+            Coord::DOWN_RIGHT,
+        ];
+    }
+    let mut ar: [[[Option<Coord>; N]; 2]; 6] = [[[None; N]; 2]; 6];
+    ar[PieceKind::Pawn as usize] = [get_pawn_white(), get_pawn_black()];
+    ar[PieceKind::Knight as usize] = [get_knight(), get_knight()];
+    ar[PieceKind::Bishiop as usize] = [insert(&get_bishop()), insert(&get_bishop())];
+    ar[PieceKind::Rook as usize] = [insert(&get_rook()), insert(&get_rook())];
+    ar[PieceKind::Queen as usize] = [insert(&get_queen()), insert(&get_queen())];
+    ar[PieceKind::King as usize] = [insert(&get_king()), insert(&get_king())];
+    return ar;
+}
+
+//note max_map doesn't include castling
+pub fn read_max_map(piece: ColoredPiece) -> impl Iterator<Item = Coord> {
+    return MAX_MAP[piece.piece_kind as usize][1 - piece.clr as usize]
+        .iter()
+        .filter_map(|e| *e);
+}
 pub fn get_available_moves(state: &ChessState) -> Vec<Move> {
     let mut moves: Vec<Move> = Vec::new();
-    //todo: swap for handcrafter for each piece
     for (i, j) in (1..=8).cartesian_product(1..=8) {
-        for (x, y) in (1..=8).cartesian_product(1..=8) {
-            let left = Coord(i, j);
-            let right = Coord(x, y);
+        let left = Coord(i, j);
+        let maybe_cur_piece = state.pieces_data.get(left);
+
+        //early skip for easy using max_map
+        if maybe_cur_piece.is_none() || maybe_cur_piece.unwrap().clr != state.current {
+            continue;
+        }
+        let piece = maybe_cur_piece.unwrap();
+
+        for coord_dif in read_max_map(piece) {
+            let right = left + coord_dif;
+            let mv = Move::new(left, right);
+            if can_do_move(&state, mv, true, false) {
+                moves.push(mv);
+            }
+        }
+        if piece.piece_kind == PieceKind::King {
+            let mv = Move::new_with(left, left + Coord(2, 0), None);
+            if can_do_move(&state, mv, true, false) {
+                moves.push(mv);
+            }
+            let mv = Move::new_with(left, left + Coord(-2, 0), None);
+            if can_do_move(&state, mv, true, false) {
+                moves.push(mv);
+            }
+        }
+    }
+    return moves;
+}
+
+pub fn get_available_moves_slow(state: &ChessState) -> Vec<Move> {
+    let mut moves: Vec<Move> = Vec::new();
+    for (i, j) in (1..=8).cartesian_product(1..=8) {
+        let left = Coord(i, j);
+
+        let maybe_cur_piece = state.pieces_data.get(left);
+
+        if maybe_cur_piece.is_none() || maybe_cur_piece.unwrap().clr != state.current {
+            continue;
+        }
+        for (m, k) in (1..=8).cartesian_product(1..=8) {
+            let right = Coord(m, k);
             let mv = Move::new(left, right);
             if can_do_move(&state, mv, true, false) {
                 moves.push(mv);
@@ -323,17 +466,14 @@ pub fn check_move(
         }
     }
 
-    if let Some(AdditionalMoveData::Castling) = b.additional {
-        let res = handle_castling(state, b);
-        if res.is_none() {
-            return Err("Castling is not allowed here".to_string());
-        }
-        let mut effects = res.unwrap();
+    let res = handle_castling(state, b);
+    if let Some(res) = res {
+        let mut effects = res;
         effects.push(Box::new(|a| a.current = a.current.reverse()));
         return Ok(effects);
     }
 
-    let res = match piece.pieceKind {
+    let res = match piece.piece_kind {
         PieceKind::Pawn => handle_pawn(state, b),
         PieceKind::Knight => handle_knight(state, b),
         PieceKind::Bishiop => handle_bishop(state, b),
@@ -368,11 +508,11 @@ pub fn check_move(
 
 pub fn is_lost_condition(state: &ChessState) -> bool {
     let king_pos = find_king_pos(state, state.current);
-    return (can_be_attacked_in_one_move(state, king_pos).unwrap()
-        && get_available_moves(state).len() == 0);
+    return can_be_attacked_in_one_move(state, king_pos).unwrap()
+        && get_available_moves(state).len() == 0;
 }
 
-fn find_king_pos(state: &ChessState, clr: Color) -> Coord {
+pub fn find_king_pos(state: &ChessState, clr: Color) -> Coord {
     for (i, j) in (1..=8).cartesian_product(1..=8) {
         let c = Coord(i, j);
         let piece = state.pieces_data.get(c);
@@ -383,7 +523,7 @@ fn find_king_pos(state: &ChessState, clr: Color) -> Coord {
         if piece.clr != clr {
             continue;
         }
-        if piece.pieceKind != PieceKind::King {
+        if piece.piece_kind != PieceKind::King {
             continue;
         }
         return c;

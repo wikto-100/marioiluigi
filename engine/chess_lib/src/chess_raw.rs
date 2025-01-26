@@ -1,11 +1,14 @@
 use std::{
-    fmt::{write, Display},
+    fmt::Display,
     ops::{Add, Mul, Sub},
 };
 
 use derive_new::new;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+use crate::serializer;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[repr(usize)]
 pub enum PieceKind {
     Pawn,
     Knight,
@@ -15,6 +18,7 @@ pub enum PieceKind {
     King,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, strum_macros::Display)]
+#[repr(usize)]
 pub enum Color {
     Black,
     White,
@@ -22,11 +26,11 @@ pub enum Color {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, derive_new::new)]
 pub struct ColoredPiece {
-    pub pieceKind: PieceKind,
+    pub piece_kind: PieceKind,
     pub clr: Color,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Coord(pub i32, pub i32);
 #[derive(Debug, Clone)]
 pub struct BoardPiecesState {
@@ -40,8 +44,8 @@ pub enum CastlingType {
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct CastlingAvailability {
-    pub kingSide: bool,
-    pub queenSide: bool,
+    pub king_side: bool,
+    pub queen_side: bool,
 }
 
 //todo: add halfmove clock
@@ -56,22 +60,31 @@ pub struct ChessState {
     pub en_passant: Option<Coord>,
 }
 pub type Effect = Box<dyn Fn(&mut ChessState)>;
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Move {
     pub from: Coord,
     pub to: Coord,
     pub additional: Option<AdditionalMoveData>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum AdditionalMoveData {
     Promotion(PieceKind),
-    Castling,
+    //Legacy
 }
 
 impl Display for Move {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}{}", self.from, self.to)
+        match self.additional {
+            None => write!(f, "{}{}", self.from, self.to),
+            Some(AdditionalMoveData::Promotion(kind)) => write!(
+                f,
+                "{}{}{}",
+                self.from,
+                self.to,
+                serializer::charify_piece(Some(ColoredPiece::new(kind, Color::White)))
+            ),
+        }
     }
 }
 
@@ -95,7 +108,9 @@ impl Coord {
     pub const RIGHT: Coord = Coord::make_x(1);
 
     pub const UP: Coord = Coord::make_y(1);
+    pub const UP_TWICE: Coord = Coord::make_y(2);
     pub const DOWN: Coord = Coord::make_y(-1);
+    pub const DOWN_TWICE: Coord = Coord::make_y(-2);
 
     pub const UP_LEFT: Coord = Coord(-1, 1);
     pub const UP_RIGHT: Coord = Coord(1, 1);
@@ -103,12 +118,12 @@ impl Coord {
     pub const DOWN_LEFT: Coord = Coord(-1, -1);
     pub const DOWN_RIGHT: Coord = Coord(1, -1);
 
-    pub const BlACK_FIRST_ROW: i32 = 8;
+    pub const BLACK_FIRST_ROW: i32 = 8;
     pub const BLACK_SECOND_ROW: i32 = 7;
     pub const WHITE_FIRST_ROW: i32 = 1;
     pub const WHITE_SECOND_ROW: i32 = 2;
 
-    pub fn point_of_view_dir(&self, c: Color) -> Coord {
+    pub const fn point_of_view_dir(&self, c: Color) -> Coord {
         match c {
             Color::Black => Coord(self.0, -self.1),
             Color::White => *self,
@@ -179,7 +194,7 @@ impl Display for Coord {
 
 impl BoardPiecesState {
     pub fn new(v: Vec<Vec<Option<ColoredPiece>>>) -> Option<BoardPiecesState> {
-        if (v.len() == 8 && v.iter().all(|a| a.len() == 8)) {
+        if v.len() == 8 && v.iter().all(|a| a.len() == 8) {
             return Some(Self { v });
         }
         return None;
@@ -235,7 +250,7 @@ impl Move {
 
 impl CastlingAvailability {
     pub const NOPE: CastlingAvailability = CastlingAvailability {
-        kingSide: false,
-        queenSide: false,
+        king_side: false,
+        queen_side: false,
     };
 }

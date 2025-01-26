@@ -9,10 +9,4 @@ mod cpp_api;
 pub mod python_api;
 
 pub mod serializer;
-mod test;
-use derive_new::new;
-
-#[no_mangle]
-pub extern "C" fn test2() -> i32 {
-    69
-}
+pub mod test;

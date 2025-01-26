@@ -1,7 +1,3 @@
-use std::ops::Add;
-
-use derive_new::new;
-
 use crate::chess_raw::*;
 
 pub fn parse_piece_repr(t: char) -> Option<ColoredPiece> {
@@ -29,7 +25,7 @@ fn try_parse_fen_board(s: &str) -> Result<BoardPiecesState, String> {
     let mut it = 0;
     let mut last_seen_slash = 0;
     let chars: Vec<_> = s.chars().collect();
-    for (&c, i) in chars.iter().zip((0..chars.len())) {
+    for (&c, i) in chars.iter().zip(0..chars.len()) {
         if it % 8 == 0 && last_seen_slash < it / 8 {
             last_seen_slash = it / 8;
             if c == '/' {
@@ -79,19 +75,19 @@ fn try_parse_castling(s: &str) -> Result<[CastlingAvailability; 2], String> {
 
     let mut amount = 0;
     if s.contains("K") {
-        white.kingSide = true;
+        white.king_side = true;
         amount += 1;
     }
     if s.contains("Q") {
-        white.queenSide = true;
+        white.queen_side = true;
         amount += 1;
     }
     if s.contains("k") {
-        black.kingSide = true;
+        black.king_side = true;
         amount += 1;
     }
     if s.contains("q") {
-        black.queenSide = true;
+        black.queen_side = true;
         amount += 1;
     }
     if amount < s.len() {
@@ -102,9 +98,9 @@ fn try_parse_castling(s: &str) -> Result<[CastlingAvailability; 2], String> {
 }
 
 pub fn parse_fen(s: &str) -> Result<ChessState, String> {
-    let afterSplit: Vec<&str> = s.split(" ").collect();
-    if let &[s_pieces, s_color, s_castling, s_en_passant, s_halfmove_clock, s_fullmove_number] =
-        afterSplit.as_slice()
+    let after_split: Vec<&str> = s.split(" ").collect();
+    if let &[s_pieces, s_color, s_castling, s_en_passant, _s_halfmove_clock, _s_fullmove_number] =
+        after_split.as_slice()
     {
         let pieces = try_parse_fen_board(s_pieces)?;
         let color = try_parse_color(s_color)?;
@@ -124,7 +120,7 @@ fn try_parse_optional_coord(coord: &str) -> Result<Option<Coord>, String> {
         .chars()
         .collect::<Vec<_>>()
         .try_into()
-        .map_err(|e| "Coord contains more or less than two chars".to_string())?;
+        .map_err(|_| "Coord contains more or less than two chars".to_string())?;
 
     let x = ((a as i32) - ('a' as i32)) + 1;
     let y = (b as i32) - ('0' as i32);
@@ -144,11 +140,7 @@ pub fn parse_move(a: &str) -> Result<Move, String> {
         let chr = a.chars().nth(4).unwrap();
 
         if chr == 'c' {
-            return Ok(Move::new_with(
-                left,
-                right,
-                Some(AdditionalMoveData::Castling),
-            ));
+            return Ok(Move::new_with(left, right, None));
         }
 
         let promotio_kind = parse_piece_repr(chr)
@@ -156,7 +148,7 @@ pub fn parse_move(a: &str) -> Result<Move, String> {
         return Ok(Move::new_with(
             left,
             right,
-            Some(AdditionalMoveData::Promotion(promotio_kind.pieceKind)),
+            Some(AdditionalMoveData::Promotion(promotio_kind.piece_kind)),
         ));
     }
 
