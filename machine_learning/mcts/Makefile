@@ -1,92 +1,123 @@
 # Makefile
 
-# Compiler and Tools
-CXX = g++
-SWIG = swig
+# ------------------------------------------------------------------------------
+# Tools and Flags
+CXX        = g++
+SWIG       = swig
 
-# Compiler Flags
-CXXFLAGS = -std=c++17 -O3 -Wall -Wextra -Iinclude -fPIC
+BUILD_DIR  = build
 
-# SWIG Flags
-SWIGFLAGS = -c++ -python -Iinclude
+# Include local . so we can #include "MCTS.hpp" without a path,
+# plus engine/chess_lib/cpp_headers/ so we can #include "chess_lib.hpp".
+CXXFLAGS   = -std=c++17 -O3 -Wall -Wextra -I. -I../../engine/chess_lib/cpp_headers -fPIC
 
-# Linker Flags
-LDFLAGS_EXEC = -Llib -lchess_lib -lm
-LDFLAGS_SHARED = -Llib -lchess_lib -lm
+# SWIG: point to current dir and engine headers
+SWIGFLAGS  = -c++ -python -I. -I../../engine/chess_lib/cpp_headers
 
-# Python Configuration
+# Python dev flags (Arch has Python.h in /usr/include/python3.X)
 PYTHON_INCLUDE = $(shell python3-config --includes)
-PYTHON_LIB = $(shell python3-config --ldflags)
+PYTHON_LIB     = $(shell python3-config --ldflags)
 
-# Directories
-SRC_DIR = src
-BUILD_DIR = build
-INCLUDE_DIR = include
-LIB_DIR = lib
+# Rust build output directory
+LIB_DIR    = ../../engine/chess_lib/target/release
 
-# Source Files for Executable
-EXEC_SRC = $(SRC_DIR)/testmcts.cpp $(SRC_DIR)/MCTS.cpp $(SRC_DIR)/chess_lib.cpp
-EXEC_OBJ = $(EXEC_SRC:$(SRC_DIR)/%.cpp=$(BUILD_DIR)/%.o)
+# Linker flags: link directly with Rust's static library
+LDFLAGS_EXEC   = -L$(LIB_DIR) -lchess_lib -lm
+LDFLAGS_SHARED = -L$(LIB_DIR) -lchess_lib -lm
+
+# ------------------------------------------------------------------------------
+# Source Files
+SRC_DIR     = src
+
+# Local MCTS sources for the executable
+MCTS_SOURCES  = $(SRC_DIR)/testmcts.cpp \
+                $(SRC_DIR)/MCTS.cpp
+MCTS_OBJECTS  = $(MCTS_SOURCES:%.cpp=$(BUILD_DIR)/%.o)
+
+# Engine's external chess_lib wrapper
+ENGINE_CHESS_LIB_CPP = ../../engine/chess_lib/cpp_headers/chess_lib.cpp
+ENGINE_CHESS_LIB_OBJ = $(BUILD_DIR)/chess_lib.o
+
+# ------------------------------------------------------------------------------
+# Final Executable
+EXEC_OBJ    = $(MCTS_OBJECTS) $(ENGINE_CHESS_LIB_OBJ)
 EXEC_TARGET = $(BUILD_DIR)/mcts
 
-# SWIG Interface
+# ------------------------------------------------------------------------------
+# SWIG: interface + generated wrappers
 SWIG_INTERFACE = mcts.i
-SWIG_WRAP = mcts_wrap.cxx
-SWIG_PY = mcts.py
+SWIG_WRAP      = mcts_wrap.cxx
+SWIG_PY        = mcts.py
 
-# Shared Library
+# Compile SWIG wrapper into an object file with Python includes
+WRAP_OBJ       = $(BUILD_DIR)/mcts_wrap.o
+
+# ------------------------------------------------------------------------------
+# Build the shared library (Python module):
+# We'll link these object files:
+# 1) mcts_wrap.o  (SWIG wrapper, compiled with Python includes)
+# 2) MCTS.o       (from src/MCTS.cpp)
+# 3) chess_lib.o  (from engine's chess_lib.cpp)
+SHARED_OBJ = $(WRAP_OBJ) \
+             $(BUILD_DIR)/src/MCTS.o \
+             $(ENGINE_CHESS_LIB_OBJ)
+
 SHARED_LIB = _mcts.so
-SHARED_SRC = $(SWIG_WRAP) $(SRC_DIR)/MCTS.cpp
-SHARED_OBJ = $(BUILD_DIR)/mcts_wrap.o $(BUILD_DIR)/MCTS.o
 
-# Default Target: Build Executable
+# ------------------------------------------------------------------------------
+# Default target: build the executable
 all: $(EXEC_TARGET)
 
-# Build Executable
-$(EXEC_TARGET): $(EXEC_OBJ) lib/libchess_lib.a
+# 1) Ensure the Rust library is built first
+rustlib:
+	@echo "[Makefile] Building Rust library via just..."
+	cd ../../engine/chess_lib && just build_cpp_api_release
+
+# 2) Build the executable (depends on Rust library + object files)
+$(EXEC_TARGET): rustlib $(EXEC_OBJ)
 	@mkdir -p $(BUILD_DIR)
 	$(CXX) $(EXEC_OBJ) $(CXXFLAGS) $(LDFLAGS_EXEC) -o $(EXEC_TARGET)
 
-# Compile Source Files for Executable
-$(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
-	@mkdir -p $(BUILD_DIR)
-	$(CXX) -c $(CXXFLAGS) $< -o $@
+# ------------------------------------------------------------------------------
+# Pattern rule for local MCTS .cpp -> .o
+$(BUILD_DIR)/%.o: %.cpp
+	@mkdir -p $(dir $@)
+	$(CXX) -c $(CXXFLAGS) $(PYTHON_INCLUDE) $< -o $@
 
-# SWIG Targets: Generate Wrapper Code
-$(SWIG_WRAP) $(SWIG_PY): $(SWIG_INTERFACE) $(INCLUDE_DIR)/MCTS.hpp
+# ------------------------------------------------------------------------------
+# Explicit rule for building engine/chess_lib.cpp -> chess_lib.o
+$(ENGINE_CHESS_LIB_OBJ): $(ENGINE_CHESS_LIB_CPP)
+	@mkdir -p $(dir $@)
+	$(CXX) -c $(CXXFLAGS) $(PYTHON_INCLUDE) $< -o $@
+
+# ------------------------------------------------------------------------------
+# SWIG steps
+$(SWIG_WRAP) $(SWIG_PY): $(SWIG_INTERFACE) MCTS.hpp
 	$(SWIG) $(SWIGFLAGS) $(SWIG_INTERFACE)
 
-# Compile SWIG Wrapper
-$(BUILD_DIR)/mcts_wrap.o: $(SWIG_WRAP)
-	@mkdir -p $(BUILD_DIR)
-	$(CXX) -c $(CXXFLAGS) $(PYTHON_INCLUDE) $(SWIG_WRAP) -o $(BUILD_DIR)/mcts_wrap.o
+# Compile the SWIG wrapper into an object file with the correct Python includes
+$(WRAP_OBJ): $(SWIG_WRAP)
+	@mkdir -p $(dir $@)
+	$(CXX) -c $(CXXFLAGS) $(PYTHON_INCLUDE) $(SWIG_WRAP) -o $@
 
-# Compile C++ Sources for Shared Library
-$(BUILD_DIR)/MCTS.o: $(SRC_DIR)/MCTS.cpp $(INCLUDE_DIR)/MCTS.hpp
-	@mkdir -p $(BUILD_DIR)
-	$(CXX) -c $(CXXFLAGS) -I$(INCLUDE_DIR) $(SRC_DIR)/MCTS.cpp -o $(BUILD_DIR)/MCTS.o
-
-# Build the Static Library (Ensure it's built with -fPIC)
-lib/libchess_lib.a: build/chess_lib.o
-	@mkdir -p lib
-	ar rcs lib/libchess_lib.a build/chess_lib.o
-
-# Compile chess_lib.cpp with -fPIC and include all necessary functions
-$(BUILD_DIR)/chess_lib.o: $(SRC_DIR)/chess_lib.cpp $(INCLUDE_DIR)/chess_lib.hpp
-	@mkdir -p $(BUILD_DIR)
-	$(CXX) -c $(CXXFLAGS) -I$(INCLUDE_DIR) $(SRC_DIR)/chess_lib.cpp -o $(BUILD_DIR)/chess_lib.o
-
-# Build Shared Library with SWIG
-$(SHARED_LIB): $(SHARED_OBJ) lib/libchess_lib.a
+# ------------------------------------------------------------------------------
+# Build the shared library (Python module)
+$(SHARED_LIB): rustlib $(SHARED_OBJ)
 	@mkdir -p $(BUILD_DIR)
 	$(CXX) -shared $(SHARED_OBJ) $(CXXFLAGS) $(PYTHON_LIB) $(LDFLAGS_SHARED) -o $(SHARED_LIB)
 
-# Target to Generate and Compile Shared Library
+# Provide a "shared" target to build _mcts.so
 shared: $(SHARED_LIB)
 
-# Clean Build Artifacts
+# ------------------------------------------------------------------------------
+# Cleanup
 clean:
-	rm -f $(EXEC_TARGET) $(BUILD_DIR)/*.o $(SWIG_WRAP) $(SWIG_PY) $(SHARED_LIB) lib/libchess_lib.a
+	rm -f \
+		$(EXEC_TARGET) \
+		$(BUILD_DIR)/*.o \
+		$(BUILD_DIR)/*/*.o \
+		$(SWIG_WRAP) \
+		$(SWIG_PY) \
+		$(SHARED_LIB)
 
-# Phony Targets
-.PHONY: all clean shared
+.PHONY: all clean shared rustlib

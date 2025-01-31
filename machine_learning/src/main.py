@@ -23,7 +23,7 @@ def main():
         agent_black = ChessAgent(name="Magnus Carlsen")
         # Zdefiniuj ścieżkę silnika Stockfish
         stockfish_path = os.path.join(
-            os.path.dirname(__file__), "../stockfish/stockfish-9-64"
+            os.path.dirname(__file__), "../stockfish/stockfish-ubuntu-x86-64"
         )
         model_save_path = os.path.join(
             os.path.dirname(__file__), "../models/trained_model.pth"
@@ -50,7 +50,7 @@ def main():
             Q_learning(
                 agent_white,
                 stockfish,
-                games_to_play=100,
+                games_to_play=1000,
                 max_game_moves=5,
                 board_config=board_fen,
             )

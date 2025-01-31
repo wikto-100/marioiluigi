@@ -1,220 +1,282 @@
 #include "MCTS.hpp"
-#include <cmath>
-#include <algorithm>
 
-inline size_t MCTS::_get_random_index(std::mt19937 &gen, int min, int max)
+// -------------------------------------
+//  Utility: _get_random_index
+// -------------------------------------
+size_t MCTS::_get_random_index(std::mt19937 &gen, int min, int max)
 {
     std::uniform_int_distribution<> distr(min, max);
     return distr(gen);
 }
 
-MCTS::MCTS(const std::string &starting_fen, const std::vector<std::string> &root_moves, size_t branching_factor, size_t max_depth)
+// -------------------------------------
+//  Constructor / Destructor
+// -------------------------------------
+MCTS::MCTS(const std::string &starting_fen,
+           const std::vector<std::string> &root_moves,
+           size_t branching_factor,
+           size_t max_depth)
     : BRANCHING_FACTOR(std::min(branching_factor, root_moves.size())),
       MAX_DEPTH(max_depth),
       gen(rd())
 {
     // Create the root node
     root = new Node(nullptr, "", starting_fen);
-    // Add child nodes for each possible move
+
+    // For partial expansion, store the candidate moves in root->unexpanded_moves
+    // Add up to BRANCHING_FACTOR children immediately if you wish (as in your original code),
+    // or simply store them for expansion. Here, we do partial expansion:
+    root->unexpanded_moves.assign(root_moves.begin(), root_moves.end());
+
+    // Optionally, you can expand up to BRANCHING_FACTOR right away:
+    // (Uncomment if you want the same “initial child creation” as in your original code)
+    /*
     size_t child_ctr = 0;
-    for (const auto &move : root_moves) // Use const reference
+    for (const auto &mv : root_moves)
     {
-        add_child(root, move, chess_lib::getAppliedMove(starting_fen, move));
-        if (++child_ctr >= BRANCHING_FACTOR)
-        {
-            break;
-        }
+        if (child_ctr++ >= BRANCHING_FACTOR) break;
+        Node *child = add_child(root, mv, chess_lib::getAppliedMove(starting_fen, mv));
+        // Remove it from root->unexpanded_moves
+        // (But for simplicity, partial expansion is more typical.)
     }
+    */
 }
 
 MCTS::~MCTS()
 {
-    // Delete all nodes in the tree
     std::function<void(Node *)> delete_tree = [&](Node *node)
     {
         for (Node *child : node->children)
-        {
             delete_tree(child);
-        }
         delete node;
     };
-
     delete_tree(root);
 }
 
-MCTS::Node *MCTS::add_child(Node *parent, const std::string &move, const std::string &fen)
+// -------------------------------------
+//  is_terminal
+// -------------------------------------
+bool MCTS::is_terminal(const Node *node) const
 {
-    // Create a new node and add it to the parent's children
+    // A node is terminal if the game is lost or if there are no moves.
+    // Depending on your definition, you might consider a draw also terminal.
+    if (chess_lib::isLostCondition(node->fen))
+        return true;
+
+    // If no children and no unexpanded moves remain, no moves are possible => terminal
+    if (node->children.empty() && node->unexpanded_moves.empty())
+        return true;
+
+    return false;
+}
+
+// -------------------------------------
+//  add_child
+// -------------------------------------
+MCTS::Node* MCTS::add_child(Node *parent, const std::string &move, const std::string &fen)
+{
     Node *child = new Node(parent, move, fen);
-    parent->children.emplace_back(child); // Use emplace_back for efficiency
+    parent->children.push_back(child);
     return child;
 }
 
+// -------------------------------------
+//  UCB
+// -------------------------------------
 float MCTS::ucb(const Node *node) const
 {
-    // UCB1 formula
+    // If never visited, return +∞ to ensure it gets explored
     if (node->visits == 0)
         return std::numeric_limits<float>::infinity();
-    if (node->parent == nullptr)
-        return static_cast<float>(node->q()) / node->visits;
 
-    return (static_cast<float>(node->q()) / node->visits) + 1.41f * std::sqrt(std::log(node->parent->visits) / node->visits);
+    if (node->parent == nullptr) {
+        // Root node
+        return static_cast<float>(node->q()) / (node->visits + 1e-6f);
+    }
+
+    // UCB1
+    float exploitation = static_cast<float>(node->q()) / (node->visits + 1e-6f);
+    float exploration  = 1.41f * std::sqrt(std::log(node->parent->visits + 1.0f) /
+                                           (node->visits + 1e-6f));
+    return exploitation + exploration;
 }
 
-MCTS::Node *MCTS::select(Node *node)
+// -------------------------------------
+//  select_node
+// -------------------------------------
+MCTS::Node* MCTS::select_node(Node *node)
 {
-    // Traverse the tree until a leaf node is reached
-    while (!node->is_leaf())
+    // Traverse down using UCB to find a leaf or a node that still has unexpanded moves
+    while (!is_terminal(node))
     {
-        // Select the child node with the highest UCB value
+        // If there are still unexpanded moves, we stop here for expansion
+        if (!node->unexpanded_moves.empty())
+            return node;
+
+        // Otherwise, pick the best child by UCB
         node = *std::max_element(node->children.begin(), node->children.end(),
-                                 [this](const Node *a, const Node *b) -> bool
-                                 { return ucb(a) < ucb(b); });
+            [this](Node *a, Node *b) {
+                return ucb(a) < ucb(b);
+            }
+        );
     }
-
-    return node;
+    return node; // Either terminal or has unexpanded moves
 }
 
-MCTS::Node *MCTS::expand(Node *leaf)
+// -------------------------------------
+//  expand
+// -------------------------------------
+MCTS::Node* MCTS::expand(Node *node)
 {
-    // Expand branching factor nodes of untried actions
-    if (!leaf->is_leaf())
-    {
-        std::cerr << "Node is not a leaf" << std::endl;
-        return nullptr;
-    }
-    std::vector<std::string> moves = chess_lib::getAvailableMoves(leaf->fen);
-    if (moves.empty())
-    {
-        return leaf;
-    }
-    for (const auto &move : moves) // Use const reference
-    {
-        add_child(leaf, move, chess_lib::getAppliedMove(leaf->fen, move));
-    }
-    return leaf;
+    // If node is terminal or has no unexpanded moves, return itself
+    if (is_terminal(node) || node->unexpanded_moves.empty())
+        return node;
+
+    // “Partial expansion”: expand exactly one move from node->unexpanded_moves
+    // Here we pick a random move from that vector
+    int idx = static_cast<int>(_get_random_index(gen, 0, (int)node->unexpanded_moves.size() - 1));
+    std::string move = node->unexpanded_moves[idx];
+
+    // Remove it from unexpanded_moves
+    node->unexpanded_moves.erase(node->unexpanded_moves.begin() + idx);
+
+    // Create the new child
+    std::string child_fen = chess_lib::getAppliedMove(node->fen, move);
+    Node *child = add_child(node, move, child_fen);
+
+    // Prepare child->unexpanded_moves by retrieving moves from chess_lib
+    std::vector<std::string> all_moves = chess_lib::getAvailableMoves(child_fen);
+    child->unexpanded_moves.assign(all_moves.begin(), all_moves.end());
+    
+    return child;
 }
 
-void MCTS::rollout(Node *leaf)
+// -------------------------------------
+//  rollout
+// -------------------------------------
+void MCTS::rollout(Node *node)
 {
-    if (!leaf->is_leaf())
-    {
-        std::cerr << "Node is not a leaf" << std::endl;
+    // If node is terminal, no simulation needed
+    if (is_terminal(node))
         return;
-    }
-    // Simulate a game from the current node
-    std::string current_fen = leaf->fen;
+
+    // Simulate from node->fen up to MAX_DEPTH or until terminal
+    std::string current_fen = node->fen;
     size_t sim_depth = 0;
-    while (sim_depth < MAX_DEPTH && !chess_lib::isLostCondition(current_fen))
+
+    while (sim_depth < MAX_DEPTH)
     {
-        // Get available moves
-        // Instead sample a branching factor amount of moves, randomly
-        // also make the branching factor larger as the game progresses
+        if (chess_lib::isLostCondition(current_fen))
+            break; // Terminal
+
+        // Get possible moves
         const std::vector<std::string> moves = chess_lib::getAvailableMoves(current_fen);
         if (moves.empty())
-        {
-            // No moves available, game is a draw
-            break;
-        }
-        // the chance of getting checkmate with some random move is very low
-        // we can replace this with a heuristic to make the simulation have a bit more sense
-        size_t move_index = _get_random_index(gen, 0, static_cast<int>(moves.size() - 1));
-        const std::string &random_move = moves.at(move_index);
+            break; // No legal moves => terminal or draw
 
-        // Select a random move
+        // Randomly pick one
+        size_t move_index = _get_random_index(gen, 0, (int)moves.size() - 1);
+        const std::string &random_move = moves[move_index];
+        
+        // Apply it
         try
         {
             current_fen = chess_lib::getAppliedMove(current_fen, random_move);
         }
         catch (const std::exception &e)
         {
-            std::cout << "Exception on rand move apply: " << e.what() << std::endl;
-            std::cout << "Tried to apply move: " << random_move << " in position " << current_fen << std::endl;
+            std::cerr << "Rollout move exception: " << e.what() << std::endl;
+            break;
         }
-        sim_depth++;
+        ++sim_depth;
     }
+
+    // If final position is lost from node's perspective, record that
     if (chess_lib::isLostCondition(current_fen))
     {
-        bool isWin = (leaf->turn() && (sim_depth % 2 != 0)) || (!leaf->turn() && (sim_depth % 2 == 0));
+        // Suppose we define “isWin” as: if the node’s side eventually delivers mate 
+        // or the opponent runs out of moves in the next turn, etc.
+        // Here we replicate your logic that checks parity of sim_depth:
+        bool isWin = (node->turn() && ((sim_depth % 2) != 0)) ||
+                     (!node->turn() && ((sim_depth % 2) == 0));
 
         if (isWin)
-        {
-            leaf->wins = 1;
-        }
+            node->wins   = 1;
         else
-        {
-            leaf->losses = 1;
-        }
+            node->losses = 1;
     }
 }
 
+// -------------------------------------
+//  backpropagate
+// -------------------------------------
 void MCTS::backpropagate(Node *node)
 {
-    int wins = node->wins;
-    int losses = node->losses;
+    // Take the final outcome from this node
+    int w = node->wins;
+    int l = node->losses;
+
+    // Walk upwards to root
     while (node != nullptr)
     {
         node->visits++;
-        if (!node->is_leaf())
-        {
-            node->wins += wins;
-            node->losses += losses;
-        }
+        // Update stats in *every* node, including leaf
+        node->wins   += w;
+        node->losses += l;
 
         node = node->parent;
     }
 }
 
+// -------------------------------------
+//  run
+// -------------------------------------
 void MCTS::run(int iterations)
 {
     for (int i = 0; i < iterations; ++i)
     {
-        Node *selected_node = select(root);
-        Node *expanded_node = expand(selected_node);
-        for (Node *child : expanded_node->children)
-        {
-            rollout(child);
-            backpropagate(child);
-        }
+        // 1. Selection
+        Node *leaf = select_node(root);
+
+        // 2. Expansion (Expand exactly one child if not terminal)
+        Node *child = expand(leaf);
+
+        // 3. Rollout
+        rollout(child);
+
+        // 4. Backprop
+        backpropagate(child);
     }
 }
 
+// -------------------------------------
+//  get_best_move
+// -------------------------------------
 std::string MCTS::get_best_move(int iterations)
 {
+    // Run MCTS
     run(iterations);
-    // Select the child node with the highest number of visits
-    Node *best_node = *std::max_element(root->children.begin(), root->children.end(),
-                                        [this](const Node *a, const Node *b) -> bool
-                                        {
-                                            // Only consider nodes that were visited at least once
-                                            if (a->visits == 0 || b->visits == 0)
-                                                return false;
-                                            return ucb(a) < ucb(b);
-                                        });
 
-    return best_node->move;
-}
-/*
-void MCTS::debug_print_tree() const
-{
-    // Print the tree structure starting from the root node
-    std::function<void(const Node *, int)> print_tree = [&](const Node *node, int depth) -> void
+    // After run, pick the best child of root. Standard approach: 
+    // choose the child with the highest number of visits (or highest average score).
+    // We illustrate "max visits" below:
+    if (root->children.empty())
     {
-        for (int i = 0; i < depth; ++i)
-        {
-            std::cout << "  ";
-        }
-        std::cout << "Move: " << node->move
-                  << " Fen: " << node->fen
-                  << " Wins: " << node->wins
-                  << " Losses: " << node->losses
-                  << " Visits: " << node->visits << std::endl;
-        for (const Node *child : node->children)
-        {
-            print_tree(child, depth + 1);
-        }
-    };
+        // No moves
+        return "";
+    }
 
-    print_tree(root, 0);
+    Node *best_node = nullptr;
+    int best_visits = -1;
+
+    for (Node *child : root->children)
+    {
+        if (child->visits > best_visits)
+        {
+            best_visits = child->visits;
+            best_node   = child;
+        }
+    }
+
+    return (best_node ? best_node->move : "");
 }
-*/

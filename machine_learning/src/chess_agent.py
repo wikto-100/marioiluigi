@@ -38,8 +38,6 @@ class ChessAgent:
         self.batch_size = 16  # ile próbek uwzględnić w kroku treningowym
         
         # Parametry MCTS
-        # Obs: aby nauczyć agenta mata w 5, bez MCTS zajmuje to ~1000 gier. Z mcts-prawdop. na 0.3, jest to ok. 100 gier
-        # Więc MCTS jest rzeczywiście dobry
         self.mcts_move_prob = 0.3  # prawdopodobieństwo wyboru najlepszego ruchu za pomocą MCTS
         self.mcts_iterations = 100 # ile razy wykonać algorytm MCTS
         self.mcts_rollout_depth = 5 # jak głębokie są losowe symulacje w MCTS
@@ -50,8 +48,9 @@ class ChessAgent:
 
         # Inicjalizuj sieć polityki i przenieś ją na wybrane urządzenie
 
-        #self.policy_net = LuigiCNN().to(self.device)  # **2. Przenieś model na urządzenie**
-        self.policy_net = AlphaZeroNet().to(self.device)
+        # 
+        self.policy_net = LuigiCNN().to(self.device)  # **2. Przenieś model na urządzenie**
+        # self.policy_net = AlphaZeroNet().to(self.device)
 
         # Załaduj wytrenowany model, jeśli istnieje
         if input_model_path is not None and os.path.exists(input_model_path):

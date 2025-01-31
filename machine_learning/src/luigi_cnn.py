@@ -1,7 +1,6 @@
+import torch
 import torch.nn as nn
 from src.mask_layer import MaskLayer
-import torch
-
 
 class LuigiCNN(nn.Module):
     def __init__(self):
@@ -18,9 +17,6 @@ class LuigiCNN(nn.Module):
         # Residual blocks for better gradient flow
         self.res_block1 = ResidualBlock(64, 128)
         self.res_block2 = ResidualBlock(128, 256)
-
-        # Position attention module
-        self.attention = PositionAttention(256)
 
         # Policy head
         self.policy_head = nn.Sequential(
@@ -40,13 +36,11 @@ class LuigiCNN(nn.Module):
         x = self.res_block1(x)
         x = self.res_block2(x)
 
-        # Attention
-        x = self.attention(x)
-
         # Flatten and policy head
         x = x.view(x.size(0), -1)
         x = self.policy_head(x)
 
+        # Apply mask if provided
         if mask is not None:
             x = self.mask(x, mask)
 
@@ -79,29 +73,3 @@ class ResidualBlock(nn.Module):
         x += self.shortcut(residual)
         x = self.leaky_relu(x)
         return x
-
-
-class PositionAttention(nn.Module):
-    def __init__(self, channels):
-        super(PositionAttention, self).__init__()
-
-        self.query_conv = nn.Conv2d(channels, channels // 8, kernel_size=1)
-        self.key_conv = nn.Conv2d(channels, channels // 8, kernel_size=1)
-        self.value_conv = nn.Conv2d(channels, channels, kernel_size=1)
-        self.gamma = nn.Parameter(torch.zeros(1))
-
-        self.softmax = nn.Softmax(dim=-1)
-
-    def forward(self, x):
-        batch_size, C, H, W = x.size()
-
-        query = self.query_conv(x).view(batch_size, -1, H * W).permute(0, 2, 1)
-        key = self.key_conv(x).view(batch_size, -1, H * W)
-        value = self.value_conv(x).view(batch_size, -1, H * W)
-
-        attention = self.softmax(torch.bmm(query, key))
-        out = torch.bmm(value, attention.permute(0, 2, 1))
-        out = out.view(batch_size, C, H, W)
-
-        out = self.gamma * out + x
-        return out
